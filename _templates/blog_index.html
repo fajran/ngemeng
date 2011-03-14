@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block content %}
+
+{% for entry in entries %}
+<div class="entry">
+<h2><a href="{{ entry.url }}">{{ entry.title }}</a></h2>
+<div class="info">
+    {{ entry.date }}
+    {% if entry.tags %}
+    {% for tag in entry.tags %}
+    <a href="{{ tag.url }}">{{ tag }}</a>
+    {% endfor %}
+    {% endif %}
+    <a href="{{ entry.url }}#disqus_thread" data-disqus-identifier="{{ entry.id }}">Comments</a>
+</div>
+
+
+{{ entry.content }}
+</div>
+{% endfor %}
+
+{% if prev or next %}
+<p>
+{% if prev %}
+<a href="{{ prev }}">Prev</a>
+{% endif %}
+{% if next %}
+<a href="{{ next }}">Next</a>
+{% endif %}
+</p>
+{% endif %}
+
+<script type="text/javascript">
+    var disqus_developer = 1;
+    var disqus_shortname = 'log-fajran';
+
+    /* * * DON'T EDIT BELOW THIS LINE * * */
+    (function () {
+        var s = document.createElement('script'); s.async = true;
+        s.type = 'text/javascript';
+        s.src = 'http://' + disqus_shortname + '.disqus.com/count.js';
+        (document.getElementsByTagName('HEAD')[0] || document.getElementsByTagName('BODY')[0]).appendChild(s);
+    }());
+</script>
+{% endblock %}
+

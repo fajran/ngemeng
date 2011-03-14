@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>{{ date }}</h2>
+<ul>
+{% for entry in entries %}
+<li><a href="{{ entry.url }}">{{ entry.title }}</a></li>
+{% endfor %}
+</ul>
+{% endblock %}
+

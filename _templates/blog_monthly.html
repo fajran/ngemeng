@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Month: {{ date }}</h2>
+<ul>
+{% for day, entries in days %}
+<li><p>{{ day }}</p>
+    <ul>
+    {% for entry in entries %}
+    <li><a href="{{ entry.url }}">{{ entry.title }}</a></li>
+    {% endfor %}
+    </ul>
+{% endfor %}
+</ul>
+{% endblock %}
+
