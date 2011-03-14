@@ -1,6 +1,7 @@
 import re
 import os
 import hashlib
+import codecs
 from collections import defaultdict
 from operator import attrgetter
 from email.utils import parsedate
@@ -13,7 +14,7 @@ class Content(object):
     @classmethod
     def read(cls, f):
         if isinstance(f, basestring):
-            f = open(f)
+            f = codecs.open(f, encoding='utf-8')
         content = f.read()
 
         re_content = re.compile(r'\s*---(?P<meta>.+?)---\n(?P<content>.+)',
@@ -42,6 +43,9 @@ class Content(object):
         self.date = self._parse_date(meta['date'])
 
     def _parse_date(self, date):
+        if isinstance(date, datetime):
+            return date
+
         try:
             return datetime.strptime(date, '%Y-%m-%d %H:%M:%S')
         except ValueError:
@@ -99,6 +103,8 @@ class Printer(object):
         f = open(path, 'w')
         f.write(html)
         f.close()
+
+        print '..', path
 
 class BlogTag(object):
     def __init__(self, tag):
@@ -193,16 +199,10 @@ class Blog(object):
             # self.printer.write(path, context, 'blog_monthly.html')
 
     def _write_index(self):
-        path = '/'
-        entries = [BlogEntry(content)
-                   for content in reversed(self.contents[-10:])]
-        context = {'entries': entries}
-        self.printer.write(path, context, 'blog_index.html')
-
         split = 10
         total = len(self.contents)
         pages = (total // split) + 1
-        contens = reversed(self.contents)
+        contents = list(reversed(self.contents))
         for index, start in enumerate(range(0, total, split)):
             path = 'index.html'
             if index > 0:
@@ -218,12 +218,14 @@ class Blog(object):
                 context['next'] = 'index%s.html' % (index+2)
             self.printer.write(path, context, 'blog_index.html')
 
-if __name__ == '__main__':
-    import sys
-    contents = [Content.read(fname) for fname in sys.argv[1:]]
-
+def main():
+    files = os.listdir('_posts')
+    contents = [Content.read(os.path.join('_posts', fname))
+                for fname in files if fname.endswith('.rst')]
     p = Printer('_build', '_templates')
-
     b = Blog(contents, p)
     b.write()
+
+if __name__ == '__main__':
+    main()
 
