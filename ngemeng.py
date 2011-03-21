@@ -10,6 +10,26 @@ from datetime import datetime
 import yaml
 from jinja2 import Template, FileSystemLoader, Environment
 
+class Config(object):
+    @classmethod
+    def read(cls, pyfile):
+        var = {}
+        execfile(pyfile, globals(), var)
+
+        for key in var.keys():
+            if key.upper() != key:
+                del var[key]
+
+        return cls(var)
+
+    def __init__(self, conf=None):
+        if conf is None:
+            conf = {}
+        self._conf = conf
+
+    def __getattr__(self, name):
+        return self._conf.get(name, None)
+
 class Content(object):
     @classmethod
     def read(cls, f):
@@ -81,9 +101,13 @@ class Content(object):
         return code_block_re.sub(repl, html)
 
 class Printer(object):
-    def __init__(self, outdir, templatedir):
+    def __init__(self, outdir, templatedir, config=None):
         self.outdir = outdir
         self.templatedir = templatedir
+
+        if config is None:
+            config = Config()
+        self.config = config
 
         self.loader = FileSystemLoader(templatedir)
         self.env = Environment(loader=self.loader)
@@ -136,9 +160,18 @@ class BlogEntry(object):
         return [BlogTag(tag.strip()) for tag in tags.split(',')]
 
 class Blog(object):
-    def __init__(self, contents, printer):
+    def __init__(self, contents, printer, config):
         self.contents = contents
         self.printer = printer
+        self.config = config
+
+    def get_default_context(self):
+        return {'google_analytics_id': self.config.GOOGLE_ANALYTICS_ID}
+
+    def get_context(self, extra):
+        context = self.get_default_context()
+        context.update(extra)
+        return context
 
     def write(self):
         for c in self.contents:
@@ -154,13 +187,14 @@ class Blog(object):
             entry = BlogEntry(c)
             context = {'entry': entry,
                        'title': entry.title}
+            context = self.get_context(context)
             self.printer.write(entry.url, context, 'blog_entry.html')
 
     def _write_indices(self):
         tree = {}
         for c in self.contents:
             entry = BlogEntry(c)
-            
+
             year, month, day = c.date.timetuple()[:3]
             dt_year = datetime(year, 1, 1)
             dt_month = datetime(year, month, 1)
@@ -184,18 +218,21 @@ class Blog(object):
                            (day.year, day.month, day.day)
                     context = {'date': day,
                                'entries': entries['entries']}
+                    context = self.get_context(context)
                     self.printer.write(path, context, 'blog_daily.html')
 
                 path = '%04d/%02d/' % (month.year, month.month)
                 context = {'date': month,
                            'days': ((day, entries['entries'])
                                     for day, entries in sorted(days['days'].items()))}
+                context = self.get_context(context)
                 self.printer.write(path, context, 'blog_monthly.html')
 
             # path = '%04d/' % (year)
             # context = {'date': year,
             #            'days': ((day, entries['entries'])
             #                     for day, entries in sorted(days['days'].items()))}
+            # context = self.get_context(context)
             # self.printer.write(path, context, 'blog_monthly.html')
 
     def _write_index(self):
@@ -216,14 +253,17 @@ class Blog(object):
                 context['prev'] = 'index.html'
             if index < pages-1:
                 context['next'] = 'index%s.html' % (index+2)
+            context = self.get_context(context)
             self.printer.write(path, context, 'blog_index.html')
 
 def main():
+    config = Config.read('conf.py')
+
     files = os.listdir('_posts')
     contents = [Content.read(os.path.join('_posts', fname))
                 for fname in files if fname.endswith('.rst')]
     p = Printer('_build', '_templates')
-    b = Blog(contents, p)
+    b = Blog(contents, p, config=config)
     b.write()
 
 if __name__ == '__main__':
